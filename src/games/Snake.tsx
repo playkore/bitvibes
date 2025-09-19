@@ -275,16 +275,33 @@ const Snake = () => {
     const diffX = canvasX - headCenterX
     const diffY = canvasY - headCenterY
 
-    if (Math.abs(diffX) > Math.abs(diffY)) {
-      if (diffX > 0 && state.direction.x !== -1) {
-        state.nextDirection = { x: 1, y: 0 }
-      } else if (diffX < 0 && state.direction.x !== 1) {
-        state.nextDirection = { x: -1, y: 0 }
-      }
-    } else if (diffY > 0 && state.direction.y !== -1) {
-      state.nextDirection = { x: 0, y: 1 }
-    } else if (diffY < 0 && state.direction.y !== 1) {
-      state.nextDirection = { x: 0, y: -1 }
+    const isOppositeDirection = (candidate: Vector2D) =>
+      candidate.x === -state.direction.x && candidate.y === -state.direction.y
+
+    const horizontalDirection: Vector2D | undefined =
+      diffX === 0
+        ? undefined
+        : diffX > 0
+          ? { x: 1, y: 0 }
+          : { x: -1, y: 0 }
+    const verticalDirection: Vector2D | undefined =
+      diffY === 0
+        ? undefined
+        : diffY > 0
+          ? { x: 0, y: 1 }
+          : { x: 0, y: -1 }
+
+    const prioritizeHorizontal = Math.abs(diffX) > Math.abs(diffY)
+    const primaryDirection = prioritizeHorizontal ? horizontalDirection : verticalDirection
+    const secondaryDirection = prioritizeHorizontal ? verticalDirection : horizontalDirection
+
+    if (primaryDirection && !isOppositeDirection(primaryDirection)) {
+      state.nextDirection = primaryDirection
+      return
+    }
+
+    if (secondaryDirection && !isOppositeDirection(secondaryDirection)) {
+      state.nextDirection = secondaryDirection
     }
   }, [])
 
