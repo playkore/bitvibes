@@ -226,6 +226,51 @@ const Snake = () => {
     resetGame()
   }, [resetGame])
 
+  const handleTouch = useCallback((event) => {
+    const canvas = canvasRef.current
+    if (!canvas) {
+      return
+    }
+
+    const touch = event.touches?.[0] || event.changedTouches?.[0]
+    if (!touch) {
+      return
+    }
+
+    event.preventDefault()
+
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const canvasX = (touch.clientX - rect.left) * scaleX
+    const canvasY = (touch.clientY - rect.top) * scaleY
+
+    const state = stateRef.current
+    const tileSize = CANVAS_SIZE / GRID_SIZE
+    const head = state.snake[0]
+
+    if (!head) {
+      return
+    }
+
+    const headCenterX = (head.x + 0.5) * tileSize
+    const headCenterY = (head.y + 0.5) * tileSize
+    const diffX = canvasX - headCenterX
+    const diffY = canvasY - headCenterY
+
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0 && state.direction.x !== -1) {
+        state.nextDirection = { x: 1, y: 0 }
+      } else if (diffX < 0 && state.direction.x !== 1) {
+        state.nextDirection = { x: -1, y: 0 }
+      }
+    } else if (diffY > 0 && state.direction.y !== -1) {
+      state.nextDirection = { x: 0, y: 1 }
+    } else if (diffY < 0 && state.direction.y !== 1) {
+      state.nextDirection = { x: 0, y: -1 }
+    }
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.defaultPrevented) {
@@ -287,6 +332,21 @@ const Snake = () => {
   }, [isGameOver, resetGame])
 
   useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) {
+      return () => {}
+    }
+
+    canvas.addEventListener('touchstart', handleTouch, { passive: false })
+    canvas.addEventListener('touchmove', handleTouch, { passive: false })
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouch)
+      canvas.removeEventListener('touchmove', handleTouch)
+    }
+  }, [handleTouch])
+
+  useEffect(() => {
     const update = (time) => {
       const state = stateRef.current
 
@@ -323,7 +383,7 @@ const Snake = () => {
         </span>
       </div>
       <div style={{ ...statusStyle, fontSize: '0.75rem', opacity: 0.75 }}>
-        <span>Arrow keys or WASD to move</span>
+        <span>Tap, Arrow keys, or WASD to move</span>
         <span>Space to pause · Enter to restart</span>
       </div>
       <div style={canvasWrapperStyle}>
