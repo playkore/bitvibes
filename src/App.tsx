@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
-import TicTacToe from './TicTacToe'
-import Snake from './Snake'
+import TicTacToe from './games/TicTacToe'
+import Snake from './games/Snake'
+import Paratrooper from './games/Paratrooper'
 
 type Game = {
   title: string
@@ -203,6 +204,12 @@ const App = () => {
       description:
         'Challenge a friend or test your own strategy with glowing Xs and Os in this synthwave showdown.',
       component: <TicTacToe />,
+    },
+    {
+      title: 'Paratrooper Rewind',
+      description:
+        'Defend the neon skyline from waves of retro invaders in this pulsating arcade homage to the classics.',
+      component: <Paratrooper />,
     },
   ]
 
