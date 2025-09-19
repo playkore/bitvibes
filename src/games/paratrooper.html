@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paratrooper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', cursive;
+            color: #00FFFF;
+        }
+
+        canvas {
+            background-color: #000;
+            display: block;
+        }
+
+        #infoScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00FFFF;
+            text-align: center;
+            font-size: 1.5em;
+            text-shadow: 2px 2px #FF00FF;
+            z-index: 10;
+        }
+
+        #infoScreen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        #infoScreen p {
+            font-size: 0.8em;
+            line-height: 1.5;
+            max-width: 400px;
+        }
+
+        #infoScreen .prompt {
+            margin-top: 40px;
+            font-size: 1em;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="infoScreen">
+        <h1 id="titleText">PARATROOPER</h1>
+        <p id="instructions">ARROW KEYS TO AIM, SPACE TO FIRE<br>ON MOBILE: TAP TO AIM & FIRE</p>
+        <p class="prompt" id="startPrompt">CLICK OR TAP TO START</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const infoScreen = document.getElementById('infoScreen');
+
+        // --- Game Constants ---
+        const COLORS = {
+            BG: '#000000',
+            CYAN: '#00FFFF',
+            MAGENTA: '#FF00FF',
+            WHITE: '#FFFFFF'
+        };
+
+        const GAME_STATE = {
+            TITLE: 0,
+            PLAYING: 1,
+            GAME_OVER: 2
+        };
+        let gameState = GAME_STATE.TITLE;
+
+        // --- Sizing and Scaling ---
+        let scale = 1;
+        function resizeCanvas() {
+            const aspectRatio = 4 / 3;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            if (width / height > aspectRatio) {
+                canvas.height = height;
+                canvas.width = height * aspectRatio;
+            } else {
+                canvas.width = width;
+                canvas.height = width / aspectRatio;
+            }
+
+            scale = canvas.width / 800; // Original logical width is 800
+            infoScreen.style.fontSize = `${1.5 * scale}em`;
+
+            ctx.imageSmoothingEnabled = false;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- Audio ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type, ...args) {
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            switch (type) {
+                case 'shoot':
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(800, now);
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.1);
+                    break;
+                case 'explosion':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(400, now);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+                    gainNode.gain.setValueAtTime(0.2, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.2);
+                    break;
+                case 'hit_chute':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(1200, now);
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.1);
+                    break;
+                case 'land':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(100, now);
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.2);
+                    break;
+                case 'game_over':
+                    const frequencies = [440, 415, 392, 370, 349, 330, 311, 293];
+                    frequencies.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                        gain.gain.setValueAtTime(0.15, now + i * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.1 + 0.1);
+                        osc.start(now + i * 0.1);
+                        osc.stop(now + i * 0.1 + 0.1);
+                    });
+                    break;
+            }
+        }
+
+        // --- Game Objects ---
+        let player, bullets, enemies, particles, landedTroopers;
+        let score = 0;
+        let highScore = localStorage.getItem('paratrooperHighScore') || 0;
+        let lastTime = 0;
+        let enemySpawnTimer = 0;
+        let jetSpawnTimer = 5000;
+        let keys = {};
+
+        const playerState = {
+            baseWidth: 80,
+            baseHeight: 30,
+            turretWidth: 10,
+            turretHeight: 20,
+            barrelLength: 40,
+            angle: -Math.PI / 2,
+            rotationSpeed: 0.05,
+            fireCooldown: 200,
+            lastFireTime: 0
+        };
+
+        function resetGame() {
+            player = {
+                x: canvas.width / 2,
+                y: canvas.height - playerState.baseHeight,
+                angle: -Math.PI / 2,
+                isDestroyed: false,
+                destroyTimer: 0
+            };
+            bullets = [];
+            enemies = [];
+            particles = [];
+            landedTroopers = { left: [], right: [] };
+            score = 0;
+            enemySpawnTimer = 0;
+            jetSpawnTimer = Math.random() * 5000 + 10000;
+        }
+
+        // --- Spawning Logic ---
+        function spawnHelicopter() {
+            const speed = (1 + score / 500) * scale * 2;
+            enemies.push({
+                type: 'helicopter',
+                x: -50 * scale,
+                y: (Math.random() * 0.2 + 0.05) * canvas.height,
+                width: 60 * scale,
+                height: 25 * scale,
+                speed: speed,
+                dropTimer: Math.random() * 1000 + 500,
+                health: 2
+            });
+        }
+
+        function spawnJet() {
+            const direction = Math.random() < 0.5 ? 1 : -1;
+            enemies.push({
+                type: 'jet',
+                x: direction === 1 ? -60 * scale : canvas.width + 60 * scale,
+                y: (Math.random() * 0.15 + 0.05) * canvas.height,
+                width: 70 * scale,
+                height: 20 * scale,
+                speed: (6 + score / 1000) * scale * direction,
+                dropTimer: 100, // Jets drop bombs quickly
+                health: 1
+            });
+        }
+
+        function spawnTrooper(x, y) {
+            enemies.push({
+                type: 'trooper',
+                x: x,
+                y: y,
+                width: 10 * scale,
+                height: 40 * scale, // includes parachute
+                speedY: (0.8 + score / 1000) * scale,
+                hasChute: true
+            });
+        }
+
+        function spawnBomb(x, y) {
+            enemies.push({
+                type: 'bomb',
+                x: x,
+                y: y,
+                width: 8 * scale,
+                height: 12 * scale,
+                speedY: (4 + score / 800) * scale,
+            });
+        }
+
+        // --- Particle System ---
+        function createExplosion(x, y, color, count = 20) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4 * scale,
+                    vy: (Math.random() - 0.5) * 4 * scale,
+                    life: 30,
+                    color: color
+                });
+            }
+        }
+
+        // --- Update Logic ---
+        function update(deltaTime) {
+            if (gameState !== GAME_STATE.PLAYING) return;
+
+            if (player.isDestroyed) {
+                player.destroyTimer -= deltaTime;
+                if (player.destroyTimer <= 0) {
+                    gameState = GAME_STATE.GAME_OVER;
+                    infoScreen.style.display = 'block';
+                    document.getElementById('titleText').textContent = "GAME OVER";
+                    document.getElementById('instructions').textContent = `FINAL SCORE: ${score}`;
+                    document.getElementById('startPrompt').textContent = "CLICK OR TAP TO RESTART";
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('paratrooperHighScore', highScore);
+                    }
+                    playSound('game_over');
+                }
+                return;
+            }
+
+            // Player rotation
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.angle -= playerState.rotationSpeed;
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                player.angle += playerState.rotationSpeed;
+            }
+            player.angle = Math.max(-Math.PI, Math.min(0, player.angle));
+
+            // Player shooting
+            if (keys[' '] || isFiring) {
+                if (Date.now() - playerState.lastFireTime > playerState.fireCooldown) {
+                    playerState.lastFireTime = Date.now();
+                    playSound('shoot');
+                    const barrelEndX = player.x + Math.cos(player.angle) * playerState.barrelLength * scale;
+                    const barrelEndY = player.y - playerState.turretHeight * scale / 2 + Math.sin(player.angle) * playerState.barrelLength * scale;
+                    bullets.push({
+                        x: barrelEndX,
+                        y: barrelEndY,
+                        vx: Math.cos(player.angle) * 15 * scale,
+                        vy: Math.sin(player.angle) * 15 * scale
+                    });
+                }
+            }
+            isFiring = false; // Reset for tap controls
+
+            // Update bullets
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                if (bullet.y < 0 || bullet.x < 0 || bullet.x > canvas.width) {
+                    bullets.splice(index, 1);
+                }
+            });
+
+            // Enemy spawning
+            enemySpawnTimer -= deltaTime;
+            if (enemySpawnTimer <= 0) {
+                spawnHelicopter();
+                enemySpawnTimer = Math.max(1000, 4000 - score * 5);
+            }
+            if (score > 150) {
+                jetSpawnTimer -= deltaTime;
+                if (jetSpawnTimer <= 0) {
+                    spawnJet();
+                    jetSpawnTimer = Math.max(3000, 12000 - score * 10);
+                }
+            }
+
+            // Update enemies
+            enemies.forEach((enemy, eIndex) => {
+                if (enemy.type === 'helicopter' || enemy.type === 'jet') {
+                    enemy.x += enemy.speed;
+                    enemy.dropTimer -= deltaTime;
+                    if (enemy.dropTimer <= 0) {
+                        if (enemy.type === 'helicopter') {
+                            spawnTrooper(enemy.x + enemy.width / 2, enemy.y + enemy.height);
+                            enemy.dropTimer = Math.random() * 2000 + 1000;
+                        } else { // jet
+                            spawnBomb(enemy.x, enemy.y + enemy.height);
+                            enemy.dropTimer = 200;
+                        }
+                    }
+                    if (enemy.x > canvas.width + 100 || enemy.x < -100) {
+                        enemies.splice(eIndex, 1);
+                    }
+                } else if (enemy.type === 'trooper') {
+                    enemy.y += enemy.speedY;
+                    // Landing logic
+                    if (enemy.y > canvas.height - playerState.baseHeight - 10 * scale) {
+                        playSound('land');
+                        const side = enemy.x < canvas.width / 2 ? 'left' : 'right';
+                        const stack = landedTroopers[side];
+
+                        enemy.y = canvas.height - playerState.baseHeight - (stack.length * 15 * scale) - (10 * scale);
+                        if (side === 'left') {
+                            enemy.x = canvas.width / 2 - playerState.baseWidth / 2 - (stack.length * 10 * scale) - 10 * scale;
+                        } else {
+                            enemy.x = canvas.width / 2 + playerState.baseWidth / 2 + (stack.length * 10 * scale) + 10 * scale;
+                        }
+
+                        stack.push(enemy);
+                        enemies.splice(eIndex, 1);
+
+                        // Game over check
+                        if (stack.length >= 4) {
+                            let highestTrooper = stack[3];
+                            if (Math.abs(highestTrooper.x - player.x) < playerState.baseWidth / 2 + 5 * scale) {
+                                player.isDestroyed = true;
+                                player.destroyTimer = 1000;
+                                createExplosion(player.x, player.y, COLORS.MAGENTA, 100);
+                                createExplosion(player.x, player.y, COLORS.WHITE, 100);
+                            }
+                        }
+                    }
+                } else if (enemy.type === 'bomb') {
+                    enemy.y += enemy.speedY;
+                    if (enemy.y > canvas.height - playerState.baseHeight) {
+                        // Bomb hits ground
+                        createExplosion(enemy.x, canvas.height - playerState.baseHeight / 2, COLORS.WHITE, 20);
+                        playSound('explosion');
+                        enemies.splice(eIndex, 1);
+                    }
+                }
+            });
+
+            // Update particles
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+
+            // Collision detection
+            bullets.forEach((bullet, bIndex) => {
+                enemies.forEach((enemy, eIndex) => {
+                    let hit = false;
+                    // Simple bounding box collision
+                    if (bullet.x > enemy.x && bullet.x < enemy.x + enemy.width &&
+                        bullet.y > enemy.y && bullet.y < enemy.y + enemy.height) {
+                        hit = true;
+                    }
+
+                    if (hit) {
+                        bullets.splice(bIndex, 1);
+
+                        if (enemy.type === 'helicopter' || enemy.type === 'jet') {
+                            enemy.health--;
+                            if (enemy.health <= 0) {
+                                createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, COLORS.CYAN);
+                                playSound('explosion');
+                                enemies.splice(eIndex, 1);
+                                score += (enemy.type === 'helicopter' ? 20 : 30);
+                            } else {
+                                createExplosion(bullet.x, bullet.y, COLORS.WHITE, 5);
+                                playSound('hit_chute');
+                            }
+                        } else if (enemy.type === 'trooper') {
+                            if (enemy.hasChute && bullet.y < enemy.y + 20 * scale) { // Hit parachute
+                                enemy.hasChute = false;
+                                enemy.speedY *= 3; // Fall faster
+                                playSound('hit_chute');
+                                score += 5;
+                            } else { // Hit trooper body
+                                createExplosion(enemy.x + enemy.width / 2, enemy.y + 25 * scale, COLORS.MAGENTA);
+                                playSound('explosion');
+                                enemies.splice(eIndex, 1);
+                                score += 10;
+                            }
+                        } else if (enemy.type === 'bomb') {
+                            createExplosion(enemy.x, enemy.y, COLORS.WHITE, 15);
+                            playSound('explosion');
+                            enemies.splice(eIndex, 1);
+                            score += 15;
+                        }
+                    }
+                });
+
+                // Bomb vs Player collision
+                if (!player.isDestroyed) {
+                    enemies.forEach((enemy) => {
+                        if (enemy.type === 'bomb') {
+                            if (enemy.x > player.x - playerState.baseWidth / 2 && enemy.x < player.x + playerState.baseWidth / 2 &&
+                                enemy.y > player.y - playerState.baseHeight / 2) {
+                                player.isDestroyed = true;
+                                player.destroyTimer = 1000;
+                                createExplosion(player.x, player.y, COLORS.MAGENTA, 100);
+                                createExplosion(player.x, player.y, COLORS.WHITE, 100);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Drawing Logic ---
+        function drawPixel(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.floor(x), Math.floor(y), scale, scale);
+        }
+
+        function drawText(text, x, y, color, size) {
+            ctx.font = `${size * scale}px 'Press Start 2P'`;
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+        }
+
+        function drawPlayer() {
+            if (player.isDestroyed) return;
+            const { x, y, angle } = player;
+
+            // Base
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(x - playerState.baseWidth / 2 * scale, y, playerState.baseWidth * scale, playerState.baseHeight * scale);
+
+            // Turret
+            ctx.fillStyle = COLORS.MAGENTA;
+            ctx.fillRect(x - playerState.turretWidth / 2 * scale, y - playerState.turretHeight * scale, playerState.turretWidth * scale, playerState.turretHeight * scale);
+
+            // Barrel
+            ctx.save();
+            ctx.translate(x, y - playerState.turretHeight / 2 * scale);
+            ctx.rotate(angle);
+            ctx.strokeStyle = COLORS.CYAN;
+            ctx.lineWidth = 4 * scale;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(playerState.barrelLength * scale, 0);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawBullet(bullet) {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(bullet.x - 1 * scale, bullet.y - 1 * scale, 3 * scale, 3 * scale);
+        }
+
+        function drawHelicopter(enemy) {
+            ctx.fillStyle = COLORS.WHITE;
+            // Body
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height * 0.6);
+            // Tail
+            ctx.fillRect(enemy.x - 10 * scale, enemy.y + 5 * scale, 10 * scale, 5 * scale);
+            // Rotor
+            ctx.fillStyle = COLORS.MAGENTA;
+            ctx.fillRect(enemy.x + enemy.width / 2 - 15 * scale, enemy.y - 5 * scale, 30 * scale, 5 * scale);
+        }
+
+        function drawJet(jet) {
+            ctx.fillStyle = COLORS.CYAN;
+            ctx.beginPath();
+            if (jet.speed > 0) { // Moving right
+                ctx.moveTo(jet.x, jet.y + jet.height / 2);
+                ctx.lineTo(jet.x + jet.width, jet.y + jet.height / 2);
+                ctx.lineTo(jet.x + jet.width * 0.8, jet.y);
+                ctx.lineTo(jet.x + jet.width * 0.2, jet.y);
+                ctx.closePath();
+            } else { // Moving left
+                ctx.moveTo(jet.x + jet.width, jet.y + jet.height / 2);
+                ctx.lineTo(jet.x, jet.y + jet.height / 2);
+                ctx.lineTo(jet.x + jet.width * 0.2, jet.y);
+                ctx.lineTo(jet.x + jet.width * 0.8, jet.y);
+                ctx.closePath();
+            }
+            ctx.fill();
+        }
+
+
+        function drawTrooper(trooper) {
+            const bodyY = trooper.y + 20 * scale;
+            // Parachute
+            if (trooper.hasChute) {
+                ctx.fillStyle = COLORS.CYAN;
+                ctx.beginPath();
+                ctx.arc(trooper.x, trooper.y + 10 * scale, 15 * scale, Math.PI, 0);
+                ctx.fill();
+                ctx.strokeStyle = COLORS.WHITE;
+                ctx.lineWidth = 1 * scale;
+                ctx.beginPath();
+                ctx.moveTo(trooper.x, bodyY);
+                ctx.lineTo(trooper.x - 10 * scale, trooper.y + 10 * scale);
+                ctx.moveTo(trooper.x, bodyY);
+                ctx.lineTo(trooper.x + 10 * scale, trooper.y + 10 * scale);
+                ctx.stroke();
+            }
+
+            // Body
+            ctx.fillStyle = COLORS.CYAN;
+            ctx.fillRect(trooper.x - 2 * scale, bodyY, 4 * scale, 10 * scale); // Torso
+            ctx.fillRect(trooper.x - 2 * scale, bodyY - 4 * scale, 4 * scale, 4 * scale); // Head
+            // Legs
+            ctx.fillRect(trooper.x - 4 * scale, bodyY + 10 * scale, 2 * scale, 8 * scale);
+            ctx.fillRect(trooper.x + 2 * scale, bodyY + 10 * scale, 2 * scale, 8 * scale);
+        }
+
+        function drawLandedTrooper(trooper) {
+            // Body
+            ctx.fillStyle = COLORS.CYAN;
+            ctx.fillRect(trooper.x - 2 * scale, trooper.y, 4 * scale, 10 * scale); // Torso
+            ctx.fillRect(trooper.x - 2 * scale, trooper.y - 4 * scale, 4 * scale, 4 * scale); // Head
+            // Legs
+            ctx.fillRect(trooper.x - 4 * scale, trooper.y + 10 * scale, 2 * scale, 8 * scale);
+            ctx.fillRect(trooper.x + 2 * scale, trooper.y + 10 * scale, 2 * scale, 8 * scale);
+        }
+
+        function drawBomb(bomb) {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(bomb.x, bomb.y, bomb.width, bomb.height);
+            ctx.fillStyle = COLORS.MAGENTA;
+            ctx.fillRect(bomb.x, bomb.y, bomb.width, 2 * scale);
+        }
+
+        function draw() {
+            ctx.fillStyle = COLORS.BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === GAME_STATE.TITLE) {
+                return;
+            }
+
+            drawPlayer();
+
+            bullets.forEach(drawBullet);
+            enemies.forEach(enemy => {
+                if (enemy.type === 'helicopter') drawHelicopter(enemy);
+                else if (enemy.type === 'trooper') drawTrooper(enemy);
+                else if (enemy.type === 'jet') drawJet(enemy);
+                else if (enemy.type === 'bomb') drawBomb(bomb);
+            });
+
+            landedTroopers.left.forEach(drawLandedTrooper);
+            landedTroopers.right.forEach(drawLandedTrooper);
+
+            particles.forEach(p => {
+                drawPixel(p.x, p.y, p.color);
+            });
+
+            // UI
+            drawText(`PUNTI: ${score}`, 20 * scale, canvas.height - 10 * scale, COLORS.CYAN, 20);
+            drawText(`RECORD: ${highScore}`, canvas.width - 250 * scale, canvas.height - 10 * scale, COLORS.CYAN, 20);
+        }
+
+        // --- Game Loop ---
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            update(deltaTime);
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        let isFiring = false;
+        function handleInteraction(e) {
+            e.preventDefault();
+            initAudio();
+
+            if (gameState === GAME_STATE.PLAYING) {
+                if (!player.isDestroyed) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+                    const dx = x - player.x;
+                    const dy = y - (player.y - playerState.turretHeight / 2 * scale);
+                    player.angle = Math.atan2(dy, dx);
+                    isFiring = true;
+                }
+            } else {
+                gameState = GAME_STATE.PLAYING;
+                infoScreen.style.display = 'none';
+                resetGame();
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleInteraction);
+        canvas.addEventListener('touchstart', handleInteraction);
+        infoScreen.addEventListener('click', handleInteraction);
+        infoScreen.addEventListener('touchstart', handleInteraction);
+
+
+        // --- Start ---
+        resetGame();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+
+</html>
