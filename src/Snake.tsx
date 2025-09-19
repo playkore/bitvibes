@@ -1,4 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
+
+type Vector2D = { x: number; y: number }
+
+type SnakeState = {
+  snake: Vector2D[]
+  direction: Vector2D
+  nextDirection: Vector2D
+  food: Vector2D
+  lastTime: number
+  speed: number
+  animationFrame?: number
+}
 
 const panelStyle = {
   display: 'flex',
@@ -11,7 +24,7 @@ const panelStyle = {
     'linear-gradient(145deg, rgba(8, 0, 35, 0.95), rgba(68, 0, 110, 0.78))',
   boxShadow:
     '0 30px 60px rgba(0, 0, 0, 0.35), inset 0 0 40px rgba(0, 255, 204, 0.18)',
-}
+} satisfies CSSProperties
 
 const statusStyle = {
   display: 'flex',
@@ -21,7 +34,7 @@ const statusStyle = {
   fontSize: '0.9rem',
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
-}
+} satisfies CSSProperties
 
 const statusHighlightStyle = {
   padding: '0.45rem 0.75rem',
@@ -30,21 +43,21 @@ const statusHighlightStyle = {
   color: '#73ffef',
   fontSize: '0.85rem',
   letterSpacing: '0.18em',
-}
+} satisfies CSSProperties
 
 const canvasWrapperStyle = {
   position: 'relative',
   borderRadius: '1.25rem',
   overflow: 'hidden',
   border: '1px solid rgba(255, 255, 255, 0.08)',
-}
+} satisfies CSSProperties
 
 const canvasStyle = {
   display: 'block',
   width: '100%',
   height: '100%',
   imageRendering: 'pixelated',
-}
+} satisfies CSSProperties
 
 const footerStyle = {
   display: 'flex',
@@ -56,7 +69,7 @@ const footerStyle = {
   letterSpacing: '0.12em',
   textTransform: 'uppercase',
   color: 'rgba(255, 255, 255, 0.65)',
-}
+} satisfies CSSProperties
 
 const buttonStyle = {
   padding: '0.75rem 1.4rem',
@@ -69,18 +82,18 @@ const buttonStyle = {
   textTransform: 'uppercase',
   cursor: 'pointer',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-}
+} satisfies CSSProperties
 
 const GRID_SIZE = 18
 const CANVAS_SIZE = 360
 
 const Snake = () => {
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [score, setScore] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [isGameOver, setIsGameOver] = useState(false)
 
-  const stateRef = useRef({
+  const stateRef = useRef<SnakeState>({
     snake: [],
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
@@ -91,7 +104,7 @@ const Snake = () => {
 
   const placeFood = useCallback(() => {
     const state = stateRef.current
-    const availableCells = []
+    const availableCells: Vector2D[] = []
 
     for (let y = 0; y < GRID_SIZE; y += 1) {
       for (let x = 0; x < GRID_SIZE; x += 1) {
@@ -183,9 +196,13 @@ const Snake = () => {
 
   const advanceGame = useCallback(() => {
     const state = stateRef.current
+    if (state.snake.length === 0) {
+      return
+    }
+
     state.direction = state.nextDirection
 
-    const head = {
+    const head: Vector2D = {
       x: state.snake[0].x + state.direction.x,
       y: state.snake[0].y + state.direction.y,
     }
@@ -226,13 +243,13 @@ const Snake = () => {
     resetGame()
   }, [resetGame])
 
-  const handleTouch = useCallback((event) => {
+  const handleTouch = useCallback((event: TouchEvent) => {
     const canvas = canvasRef.current
     if (!canvas) {
       return
     }
 
-    const touch = event.touches?.[0] || event.changedTouches?.[0]
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0]
     if (!touch) {
       return
     }
@@ -272,7 +289,7 @@ const Snake = () => {
   }, [])
 
   useEffect(() => {
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return
       }
@@ -347,7 +364,7 @@ const Snake = () => {
   }, [handleTouch])
 
   useEffect(() => {
-    const update = (time) => {
+    const update: FrameRequestCallback = (time) => {
       const state = stateRef.current
 
       if (!state.lastTime) {
@@ -368,8 +385,9 @@ const Snake = () => {
     stateRef.current.animationFrame = requestAnimationFrame(update)
 
     return () => {
-      if (stateRef.current.animationFrame) {
-        cancelAnimationFrame(stateRef.current.animationFrame)
+      const animationFrame = stateRef.current.animationFrame
+      if (animationFrame !== undefined) {
+        cancelAnimationFrame(animationFrame)
       }
     }
   }, [advanceGame, drawGame, isGameOver, isPaused])

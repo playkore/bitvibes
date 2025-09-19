@@ -1,7 +1,14 @@
 import { useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import TicTacToe from './TicTacToe'
 import Snake from './Snake'
+
+type Game = {
+  title: string
+  description: string
+  component: ReactNode
+}
 
 const containerStyle = {
   minHeight: '100vh',
@@ -12,7 +19,7 @@ const containerStyle = {
   color: '#f9f7ff',
   fontFamily: '"Press Start 2P", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   padding: '3rem 1.5rem',
-}
+} satisfies CSSProperties
 
 const panelStyle = {
   position: 'relative',
@@ -24,7 +31,7 @@ const panelStyle = {
   boxShadow:
     '0 40px 120px rgba(255, 45, 149, 0.45), inset 0 0 35px rgba(80, 0, 200, 0.45), 0 0 0 2px rgba(255, 255, 255, 0.08)',
   overflow: 'hidden',
-}
+} satisfies CSSProperties
 
 const glowAccentStyle = {
   position: 'absolute',
@@ -34,7 +41,7 @@ const glowAccentStyle = {
   background: 'radial-gradient(circle, rgba(255, 45, 149, 0.55) 0%, rgba(7, 0, 33, 0) 70%)',
   filter: 'blur(2px)',
   zIndex: 0,
-}
+} satisfies CSSProperties
 
 const titleStyle = {
   position: 'relative',
@@ -44,7 +51,7 @@ const titleStyle = {
   textTransform: 'uppercase',
   marginBottom: '1.25rem',
   textShadow: '0 0 14px rgba(255, 82, 190, 0.9)',
-}
+} satisfies CSSProperties
 
 const subtitleStyle = {
   position: 'relative',
@@ -55,7 +62,7 @@ const subtitleStyle = {
   marginBottom: '2.75rem',
   color: 'rgba(229, 224, 255, 0.82)',
   fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-}
+} satisfies CSSProperties
 
 const listContainerStyle = {
   position: 'relative',
@@ -65,7 +72,7 @@ const listContainerStyle = {
   background: 'linear-gradient(145deg, rgba(20, 0, 55, 0.85), rgba(54, 0, 98, 0.65))',
   boxShadow: 'inset 0 0 40px rgba(255, 45, 149, 0.35)',
   border: '1px solid rgba(255, 255, 255, 0.12)',
-}
+} satisfies CSSProperties
 
 const listTitleStyle = {
   fontSize: '1rem',
@@ -73,7 +80,7 @@ const listTitleStyle = {
   textTransform: 'uppercase',
   marginBottom: '1.5rem',
   color: 'rgba(255, 255, 255, 0.85)',
-}
+} satisfies CSSProperties
 
 const listStyle = {
   listStyle: 'none',
@@ -82,11 +89,11 @@ const listStyle = {
   gap: '1.75rem',
   margin: 0,
   padding: 0,
-}
+} satisfies CSSProperties
 
 const listItemStyle = {
   margin: 0,
-}
+} satisfies CSSProperties
 
 const gameButtonStyle = {
   position: 'relative',
@@ -107,21 +114,21 @@ const gameButtonStyle = {
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   font: 'inherit',
   letterSpacing: 'inherit',
-}
+} satisfies CSSProperties
 
 const gameButtonTitleStyle = {
   fontSize: '1.1rem',
   letterSpacing: '0.16em',
   textTransform: 'uppercase',
   textShadow: '0 0 12px rgba(255, 82, 190, 0.8)',
-}
+} satisfies CSSProperties
 
 const gameDescriptionStyle = {
   fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   fontSize: '0.92rem',
   lineHeight: 1.7,
   color: 'rgba(235, 229, 255, 0.85)',
-}
+} satisfies CSSProperties
 
 const activeGameContainerStyle = {
   position: 'relative',
@@ -134,20 +141,20 @@ const activeGameContainerStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1.5rem',
-}
+} satisfies CSSProperties
 
 const activeGameHeaderStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.85rem',
-}
+} satisfies CSSProperties
 
 const activeGameTitleStyle = {
   fontSize: '1.4rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase',
   textShadow: '0 0 14px rgba(255, 82, 190, 0.9)',
-}
+} satisfies CSSProperties
 
 const backButtonStyle = {
   alignSelf: 'flex-start',
@@ -161,7 +168,7 @@ const backButtonStyle = {
   fontSize: '0.85rem',
   letterSpacing: '0.18em',
   textTransform: 'uppercase',
-}
+} satisfies CSSProperties
 
 const gameAreaStyle = {
   borderRadius: '1.25rem',
@@ -169,7 +176,7 @@ const gameAreaStyle = {
   background: 'rgba(5, 0, 28, 0.75)',
   border: '1px solid rgba(255, 255, 255, 0.08)',
   boxShadow: 'inset 0 0 28px rgba(255, 45, 149, 0.2)',
-}
+} satisfies CSSProperties
 
 const footerStyle = {
   position: 'relative',
@@ -181,10 +188,10 @@ const footerStyle = {
   color: 'rgba(255, 255, 255, 0.45)',
   textAlign: 'center',
   fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-}
+} satisfies CSSProperties
 
 const App = () => {
-  const games = [
+  const games: Game[] = [
     {
       title: 'Hyper Snake',
       description:
@@ -199,7 +206,7 @@ const App = () => {
     },
   ]
 
-  const [activeGame, setActiveGame] = useState(null)
+  const [activeGame, setActiveGame] = useState<Game | null>(null)
 
   return (
     <div style={containerStyle}>
