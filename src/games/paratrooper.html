@@ -230,6 +230,15 @@
             jetSpawnTimer = Math.random() * 5000 + 10000;
         }
 
+        // --- UPDATED: centralize player destruction ---
+        function destroyPlayer() {
+            if (player.isDestroyed) return;
+            player.isDestroyed = true;
+            player.destroyTimer = 1000;
+            createExplosion(player.x, player.y, COLORS.MAGENTA, 100);
+            createExplosion(player.x, player.y, COLORS.WHITE, 100);
+        }
+
         // --- Spawning Logic ---
         function spawnHelicopter() {
             const speed = (1 + score / 500) * scale * 2;
@@ -391,6 +400,7 @@
                         const side = enemy.x < canvas.width / 2 ? 'left' : 'right';
                         const stack = landedTroopers[side];
 
+                        // position on ground; keep your spacing logic
                         enemy.y = canvas.height - playerState.baseHeight - (stack.length * 15 * scale) - (10 * scale);
                         if (side === 'left') {
                             enemy.x = canvas.width / 2 - playerState.baseWidth / 2 - (stack.length * 10 * scale) - 10 * scale;
@@ -401,14 +411,14 @@
                         stack.push(enemy);
                         enemies.splice(eIndex, 1);
 
-                        // Game over check
+                        // --- UPDATED: instant game-over when 4 land on one side
                         if (stack.length >= 4) {
-                            let highestTrooper = stack[3];
-                            if (Math.abs(highestTrooper.x - player.x) < playerState.baseWidth / 2 + 5 * scale) {
-                                player.isDestroyed = true;
-                                player.destroyTimer = 1000;
-                                createExplosion(player.x, player.y, COLORS.MAGENTA, 100);
-                                createExplosion(player.x, player.y, COLORS.WHITE, 100);
+                            destroyPlayer();
+                        } else {
+                            // Also check the other side in case it already reached 4 earlier
+                            const otherSide = side === 'left' ? 'right' : 'left';
+                            if (landedTroopers[otherSide].length >= 4) {
+                                destroyPlayer();
                             }
                         }
                     }
@@ -484,10 +494,7 @@
                         if (enemy.type === 'bomb') {
                             if (enemy.x > player.x - playerState.baseWidth / 2 && enemy.x < player.x + playerState.baseWidth / 2 &&
                                 enemy.y > player.y - playerState.baseHeight / 2) {
-                                player.isDestroyed = true;
-                                player.destroyTimer = 1000;
-                                createExplosion(player.x, player.y, COLORS.MAGENTA, 100);
-                                createExplosion(player.x, player.y, COLORS.WHITE, 100);
+                                destroyPlayer(); // UPDATED: use helper
                             }
                         }
                     });
@@ -627,7 +634,7 @@
                 if (enemy.type === 'helicopter') drawHelicopter(enemy);
                 else if (enemy.type === 'trooper') drawTrooper(enemy);
                 else if (enemy.type === 'jet') drawJet(enemy);
-                else if (enemy.type === 'bomb') drawBomb(bomb);
+                else if (enemy.type === 'bomb') drawBomb(enemy); // UPDATED: fix variable
             });
 
             landedTroopers.left.forEach(drawLandedTrooper);
