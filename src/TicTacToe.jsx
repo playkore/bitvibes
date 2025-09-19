@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const panelStyle = {
   display: 'flex',
@@ -104,34 +104,146 @@ const calculateWinner = (board) => {
   return { winner: null, line: [] }
 }
 
+const getAvailableMoves = (board) =>
+  board.reduce((moves, cell, index) => {
+    if (!cell) {
+      moves.push(index)
+    }
+
+    return moves
+  }, [])
+
+const minimax = (board, depth, isMaximizing) => {
+  const { winner } = calculateWinner(board)
+
+  if (winner === 'O') {
+    return 10 - depth
+  }
+
+  if (winner === 'X') {
+    return depth - 10
+  }
+
+  if (board.every((cell) => cell !== null)) {
+    return 0
+  }
+
+  if (isMaximizing) {
+    let bestScore = -Infinity
+
+    for (const move of getAvailableMoves(board)) {
+      const nextBoard = board.slice()
+      nextBoard[move] = 'O'
+      const score = minimax(nextBoard, depth + 1, false)
+      bestScore = Math.max(bestScore, score)
+    }
+
+    return bestScore
+  }
+
+  let bestScore = Infinity
+
+  for (const move of getAvailableMoves(board)) {
+    const nextBoard = board.slice()
+    nextBoard[move] = 'X'
+    const score = minimax(nextBoard, depth + 1, true)
+    bestScore = Math.min(bestScore, score)
+  }
+
+  return bestScore
+}
+
+const getBestMove = (board) => {
+  let bestScore = -Infinity
+  let bestMove = null
+
+  for (const move of getAvailableMoves(board)) {
+    const nextBoard = board.slice()
+    nextBoard[move] = 'O'
+    const score = minimax(nextBoard, 0, false)
+
+    if (score > bestScore) {
+      bestScore = score
+      bestMove = move
+    }
+  }
+
+  return bestMove
+}
+
 const TicTacToe = () => {
   const [board, setBoard] = useState(Array(9).fill(null))
   const [isXNext, setIsXNext] = useState(true)
+  const [isComputerThinking, setIsComputerThinking] = useState(false)
 
   const { winner, line } = useMemo(() => calculateWinner(board), [board])
   const isBoardFull = board.every((cell) => cell !== null)
+  const isPlayerTurn = isXNext && !winner && !isBoardFull
 
   const status = winner
-    ? `Victory: ${winner}`
+    ? winner === 'X'
+      ? 'Victory: You (X)'
+      : 'Defeat: Neon AI (O)'
     : isBoardFull
       ? 'Stalemate'
-      : `Next move: ${isXNext ? 'X' : 'O'}`
+      : isXNext
+        ? 'Your move (X)'
+        : 'Neon AI calculating…'
+
+  useEffect(() => {
+    if (!isXNext && !winner && !isBoardFull) {
+      setIsComputerThinking(true)
+
+      const timer = setTimeout(() => {
+        const move = getBestMove(board)
+
+        if (move !== null) {
+          setBoard((prevBoard) => {
+            if (prevBoard[move]) {
+              return prevBoard
+            }
+
+            const nextBoard = prevBoard.slice()
+            nextBoard[move] = 'O'
+            return nextBoard
+          })
+        }
+
+        setIsXNext(true)
+        setIsComputerThinking(false)
+      }, 400)
+
+      return () => {
+        clearTimeout(timer)
+      }
+    }
+
+    if (isComputerThinking) {
+      setIsComputerThinking(false)
+    }
+  }, [board, isBoardFull, isComputerThinking, isXNext, winner])
 
   const handleSquareClick = (index) => {
-    if (board[index] || winner) {
+    if (!isPlayerTurn || board[index] || winner) {
       return
     }
 
-    const nextBoard = board.slice()
-    nextBoard[index] = isXNext ? 'X' : 'O'
+    setBoard((prevBoard) => {
+      if (prevBoard[index]) {
+        return prevBoard
+      }
 
-    setBoard(nextBoard)
-    setIsXNext((prev) => !prev)
+      const nextBoard = prevBoard.slice()
+      nextBoard[index] = 'X'
+      return nextBoard
+    })
+    setIsXNext(false)
   }
 
   const handleReset = () => {
     setBoard(Array(9).fill(null))
     setIsXNext(true)
+    setIsComputerThinking(false)
   }
 
   return (
@@ -142,12 +254,13 @@ const TicTacToe = () => {
       </div>
       <div style={boardStyle}>
         {board.map((value, index) => {
-          const isDisabled = Boolean(value) || Boolean(winner)
-          const style = line.includes(index)
+          const isWinningSquare = line.includes(index)
+          const canInteract = isPlayerTurn && !value
+          const style = isWinningSquare
             ? { ...squareDisabledStyle, ...winningSquareStyle }
-            : isDisabled
-              ? squareDisabledStyle
-              : squareStyle
+            : canInteract
+              ? squareStyle
+              : squareDisabledStyle
 
           return (
             <button
@@ -155,6 +268,7 @@ const TicTacToe = () => {
               style={style}
               type="button"
               onClick={() => handleSquareClick(index)}
+              disabled={!canInteract}
               aria-label={`Grid square ${index + 1}${value ? `, currently ${value}` : ''}`}
             >
               {value || '\u00a0'}
@@ -162,7 +276,7 @@ const TicTacToe = () => {
           )
         })}
       </div>
-      <button style={resetButtonStyle} type="button" onClick={handleReset}>
+      <button style={resetButtonStyle} type="button" onClick={handleReset} disabled={isComputerThinking}>
         Reset Round
       </button>
     </div>
