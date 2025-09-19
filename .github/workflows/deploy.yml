@@ -21,14 +21,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Do NOT enable caching here; it calls yarn before Corepack is ready
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: yarn
 
-      - name: Enable Corepack
-        run: corepack enable
+      # Make sure Yarn 4 is the one that runs
+      - name: Enable Corepack & prepare Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.1 --activate
+          yarn --version
+
+      # Optional: cache Yarn’s offline mirror (no yarn invocation needed)
+      - name: Cache Yarn offline cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+          key: yarn-cache-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            yarn-cache-
 
       - name: Install dependencies
         run: yarn install --immutable
