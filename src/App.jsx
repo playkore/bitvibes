@@ -1,4 +1,5 @@
 import TicTacToe from './TicTacToe'
+import Snake from './Snake'
 
 const containerStyle = {
   minHeight: '100vh',
@@ -123,6 +124,12 @@ const footerStyle = {
 
 const App = () => {
   const games = [
+    {
+      title: 'Hyper Snake',
+      description:
+        'Race through the grid, collect neon energy, and grow without colliding in this synthwave-infused classic.',
+      component: <Snake />,
+    },
     {
       title: 'Tic-Tac-Toe: Neon Grid',
       description:
