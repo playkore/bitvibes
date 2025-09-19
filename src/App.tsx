@@ -102,11 +102,6 @@ const App = () => {
     <div style={containerStyle}>
       <div style={panelStyle}>
         <span aria-hidden="true" style={glowAccentStyle} />
-        <h1 style={titleStyle}>Bitvibes Arcade</h1>
-        <p style={subtitleStyle}>
-          Plug in your headphones, turn up the synths, and get ready to cruise through neon dreams. This is your
-          retro-wave hub for upcoming indie experiences.
-        </p>
         {activeGame ? (
           <ActiveGameScreen game={activeGame} onBack={() => setActiveGame(null)} />
         ) : (
