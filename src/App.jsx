@@ -1,3 +1,5 @@
+import TicTacToe from './TicTacToe'
+
 const containerStyle = {
   minHeight: '100vh',
   display: 'flex',
@@ -73,20 +75,38 @@ const listTitleStyle = {
 const listStyle = {
   listStyle: 'none',
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '1.5rem',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: '1.75rem',
   margin: 0,
   padding: 0,
 }
 
-const emptyStateStyle = {
-  gridColumn: '1 / -1',
-  fontSize: '0.95rem',
-  letterSpacing: '0.06em',
+const gameCardStyle = {
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '1.2rem',
+  borderRadius: '1.5rem',
+  padding: '1.8rem',
+  background:
+    'linear-gradient(140deg, rgba(26, 0, 70, 0.88), rgba(56, 0, 122, 0.72))',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  boxShadow:
+    'inset 0 0 35px rgba(255, 45, 149, 0.18), 0 12px 40px rgba(0, 0, 0, 0.45)',
+}
+
+const gameTitleStyle = {
+  fontSize: '1.1rem',
+  letterSpacing: '0.16em',
   textTransform: 'uppercase',
-  color: 'rgba(255, 255, 255, 0.5)',
-  textAlign: 'center',
+  textShadow: '0 0 12px rgba(255, 82, 190, 0.8)',
+}
+
+const gameDescriptionStyle = {
   fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSize: '0.92rem',
+  lineHeight: 1.7,
+  color: 'rgba(235, 229, 255, 0.85)',
 }
 
 const footerStyle = {
@@ -102,7 +122,14 @@ const footerStyle = {
 }
 
 const App = () => {
-  const games = []
+  const games = [
+    {
+      title: 'Tic-Tac-Toe: Neon Grid',
+      description:
+        'Challenge a friend or test your own strategy with glowing Xs and Os in this synthwave showdown.',
+      component: <TicTacToe />,
+    },
+  ]
 
   return (
     <div style={containerStyle}>
@@ -117,11 +144,14 @@ const App = () => {
           <h2 style={listTitleStyle}>Featured Games</h2>
           <ul style={listStyle}>
             {games.map((game) => (
-              <li key={game.title}>{game.title}</li>
+              <li key={game.title} style={gameCardStyle}>
+                <div>
+                  <h3 style={gameTitleStyle}>{game.title}</h3>
+                  <p style={gameDescriptionStyle}>{game.description}</p>
+                </div>
+                {game.component}
+              </li>
             ))}
-            {games.length === 0 && (
-              <li style={emptyStateStyle}>No games uploaded to the arcade yet.</li>
-            )}
           </ul>
         </section>
         <p style={footerStyle}>Stay tuned — new vibes are on their way.</p>
