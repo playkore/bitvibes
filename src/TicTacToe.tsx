@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
+
+type Player = 'X' | 'O'
+type CellValue = Player | null
+type BoardState = CellValue[]
+
+type WinnerResult = {
+  winner: Player | null
+  line: number[]
+}
 
 const panelStyle = {
   display: 'flex',
@@ -11,7 +21,7 @@ const panelStyle = {
     'linear-gradient(145deg, rgba(18, 0, 50, 0.95), rgba(60, 0, 110, 0.78))',
   boxShadow:
     '0 30px 60px rgba(0, 0, 0, 0.35), inset 0 0 40px rgba(255, 82, 190, 0.2)',
-}
+} satisfies CSSProperties
 
 const statusStyle = {
   display: 'flex',
@@ -21,7 +31,7 @@ const statusStyle = {
   fontSize: '0.9rem',
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
-}
+} satisfies CSSProperties
 
 const statusHighlightStyle = {
   padding: '0.45rem 0.75rem',
@@ -30,13 +40,13 @@ const statusHighlightStyle = {
   color: '#ff7ad9',
   fontSize: '0.85rem',
   letterSpacing: '0.18em',
-}
+} satisfies CSSProperties
 
 const boardStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(60px, 1fr))',
   gap: '0.8rem',
-}
+} satisfies CSSProperties
 
 const squareStyle = {
   position: 'relative',
@@ -54,14 +64,14 @@ const squareStyle = {
   letterSpacing: '0.12em',
   cursor: 'pointer',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-}
+} satisfies CSSProperties
 
 const squareDisabledStyle = {
   ...squareStyle,
   cursor: 'not-allowed',
   color: 'rgba(255, 255, 255, 0.45)',
   borderColor: 'rgba(255, 255, 255, 0.08)',
-}
+} satisfies CSSProperties
 
 const resetButtonStyle = {
   alignSelf: 'flex-end',
@@ -76,14 +86,16 @@ const resetButtonStyle = {
   textTransform: 'uppercase',
   cursor: 'pointer',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-}
+} satisfies CSSProperties
 
 const winningSquareStyle = {
   boxShadow: '0 0 25px rgba(255, 82, 190, 0.65), inset 0 0 15px rgba(255, 82, 190, 0.35)',
   borderColor: 'rgba(255, 255, 255, 0.5)',
-}
+} satisfies CSSProperties
 
-const calculateWinner = (board) => {
+const createEmptyBoard = (): BoardState => Array.from({ length: 9 }, () => null)
+
+const calculateWinner = (board: BoardState): WinnerResult => {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
@@ -104,8 +116,8 @@ const calculateWinner = (board) => {
   return { winner: null, line: [] }
 }
 
-const getAvailableMoves = (board) =>
-  board.reduce((moves, cell, index) => {
+const getAvailableMoves = (board: BoardState): number[] =>
+  board.reduce<number[]>((moves, cell, index) => {
     if (!cell) {
       moves.push(index)
     }
@@ -113,7 +125,7 @@ const getAvailableMoves = (board) =>
     return moves
   }, [])
 
-const minimax = (board, depth, isMaximizing) => {
+const minimax = (board: BoardState, depth: number, isMaximizing: boolean): number => {
   const { winner } = calculateWinner(board)
 
   if (winner === 'O') {
@@ -132,7 +144,7 @@ const minimax = (board, depth, isMaximizing) => {
     let bestScore = -Infinity
 
     for (const move of getAvailableMoves(board)) {
-      const nextBoard = board.slice()
+      const nextBoard = board.slice() as BoardState
       nextBoard[move] = 'O'
       const score = minimax(nextBoard, depth + 1, false)
       bestScore = Math.max(bestScore, score)
@@ -144,7 +156,7 @@ const minimax = (board, depth, isMaximizing) => {
   let bestScore = Infinity
 
   for (const move of getAvailableMoves(board)) {
-    const nextBoard = board.slice()
+    const nextBoard = board.slice() as BoardState
     nextBoard[move] = 'X'
     const score = minimax(nextBoard, depth + 1, true)
     bestScore = Math.min(bestScore, score)
@@ -153,12 +165,12 @@ const minimax = (board, depth, isMaximizing) => {
   return bestScore
 }
 
-const getBestMove = (board) => {
+const getBestMove = (board: BoardState): number | null => {
   let bestScore = -Infinity
-  let bestMove = null
+  let bestMove: number | null = null
 
   for (const move of getAvailableMoves(board)) {
-    const nextBoard = board.slice()
+    const nextBoard = board.slice() as BoardState
     nextBoard[move] = 'O'
     const score = minimax(nextBoard, 0, false)
 
@@ -172,7 +184,7 @@ const getBestMove = (board) => {
 }
 
 const TicTacToe = () => {
-  const [board, setBoard] = useState(Array(9).fill(null))
+  const [board, setBoard] = useState<BoardState>(createEmptyBoard())
   const [isXNext, setIsXNext] = useState(true)
   const [isComputerThinking, setIsComputerThinking] = useState(false)
 
@@ -194,7 +206,7 @@ const TicTacToe = () => {
     if (!isXNext && !winner && !isBoardFull) {
       setIsComputerThinking(true)
 
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         const move = getBestMove(board)
 
         if (move !== null) {
@@ -203,7 +215,7 @@ const TicTacToe = () => {
               return prevBoard
             }
 
-            const nextBoard = prevBoard.slice()
+            const nextBoard = prevBoard.slice() as BoardState
             nextBoard[move] = 'O'
             return nextBoard
           })
@@ -214,7 +226,7 @@ const TicTacToe = () => {
       }, 400)
 
       return () => {
-        clearTimeout(timer)
+        window.clearTimeout(timer)
       }
     }
 
@@ -223,7 +235,7 @@ const TicTacToe = () => {
     }
   }, [board, isBoardFull, isComputerThinking, isXNext, winner])
 
-  const handleSquareClick = (index) => {
+  const handleSquareClick = (index: number) => {
     if (!isPlayerTurn || board[index] || winner) {
       return
     }
@@ -233,7 +245,7 @@ const TicTacToe = () => {
         return prevBoard
       }
 
-      const nextBoard = prevBoard.slice()
+      const nextBoard = prevBoard.slice() as BoardState
       nextBoard[index] = 'X'
       return nextBoard
     })
@@ -241,7 +253,7 @@ const TicTacToe = () => {
   }
 
   const handleReset = () => {
-    setBoard(Array(9).fill(null))
+    setBoard(createEmptyBoard())
     setIsXNext(true)
     setIsComputerThinking(false)
   }
@@ -256,7 +268,7 @@ const TicTacToe = () => {
         {board.map((value, index) => {
           const isWinningSquare = line.includes(index)
           const canInteract = isPlayerTurn && !value
-          const style = isWinningSquare
+          const style: CSSProperties = isWinningSquare
             ? { ...squareDisabledStyle, ...winningSquareStyle }
             : canInteract
               ? squareStyle
@@ -271,7 +283,7 @@ const TicTacToe = () => {
               disabled={!canInteract}
               aria-label={`Grid square ${index + 1}${value ? `, currently ${value}` : ''}`}
             >
-              {value || '\u00a0'}
+              {value ?? '\u00a0'}
             </button>
           )
         })}

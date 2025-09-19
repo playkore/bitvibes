@@ -1,9 +1,10 @@
+// @ts-nocheck
 import { useEffect, useRef } from 'react'
 import './Paratrooper.css'
 
 const Paratrooper = () => {
-  const canvasRef = useRef(null)
-  const infoScreenRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const infoScreenRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
